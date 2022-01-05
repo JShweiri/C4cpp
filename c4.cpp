@@ -9,7 +9,7 @@ using namespace std;
 int NUM_ROWS = 6;
 int NUM_COLS = 7;
 int C = 1;
-int NN = 1000;
+int NN = 10000;
 
 #define EMPTY 0 // -
 #define BLACK 1 // X
@@ -26,7 +26,7 @@ void printCache(unordered_map<string, pair<int, double>> cache){
 void saveCache(){
     string filename = "cache";
     stringstream ss;
-    ss << filename << char(NUM_ROWS + 48) << char(NUM_COLS + 48) << ".txt";
+    ss << filename << char(NUM_ROWS + 48) << char(NUM_COLS + 48) << ".cache";
     ss >> filename;
     cout << "saving: " << filename << '\n';
 ofstream fout(filename);
@@ -39,7 +39,7 @@ ofstream fout(filename);
 void loadCache(){
 	string filename = "cache";
     stringstream ss;
-    ss << filename << char(NUM_ROWS + 48) << char(NUM_COLS + 48) << ".txt";
+    ss << filename << char(NUM_ROWS + 48) << char(NUM_COLS + 48) << ".cache";
     ss >> filename;
     cout << "loading: " << filename << '\n';
 	ifstream fin(filename);
