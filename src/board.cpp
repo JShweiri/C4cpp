@@ -19,6 +19,8 @@ std::optional<size_t> Board::getHighestOccupiedRow_(size_t column) const {
   return std::nullopt;
 }
 bool Board::makeMove(const size_t column) {
+  if(column >= NUM_COLUMNS) return false;
+
   if (auto lowestEmptyRow = getLowestEmptyRow_(column); lowestEmptyRow.has_value()) {
     board_[lowestEmptyRow.value()][column] = currentPlayer();
     movesMade_++;

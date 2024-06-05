@@ -17,3 +17,5 @@ add_executable(Connect4 ${src_files})
 include_directories(include) 
 
 target_link_libraries(Connect4)
+
+add_subdirectory(test)
