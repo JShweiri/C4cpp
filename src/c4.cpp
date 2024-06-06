@@ -1,15 +1,56 @@
 #include "board.hpp"
 #include "color.hpp"
-
+#include <unordered_map>
+#include <cmath>
 #include <iostream>
+#include <functional>
 using namespace std;
 
-int randomMove(const Board& board){
+struct Data {
+  double visits;
+  // Black minus Red wins after visiting this state
+  double bmrw;
+};
+
+std::unordered_map<uint64_t, Data> myMap;
+
+int randomPolicy(const Board& board){
   auto v = board.getMoves();
   return v[rand() % v.size()];
 }
 
-Color randomPlayout(Board& board){
+// Broken. TODO: fix.
+int UCBPolicy(Board& board) {
+  auto c = sqrt(2.5); // Ensure `c` is of type double
+  auto v = board.getMoves();
+  auto parentEncoding = board.encode();
+
+  optional<double> maxScore = nullopt; // Use double for maxScore
+  int bestMove = 0;
+
+  for (auto move : v) {
+    board.makeMove(move);
+    auto childEncoding = board.encode();
+    
+    // Check for visits to avoid division by zero and log of zero
+    double childVisits = myMap[childEncoding].visits + 1;
+    double parentVisits = myMap[parentEncoding].visits + 1; // Avoid log(0)
+
+    double score = myMap[childEncoding].bmrw / childVisits
+                  + c * sqrt(log(parentVisits) / childVisits);
+
+    if (!maxScore.has_value() || score > *maxScore) {
+      maxScore = score;
+      bestMove = move;
+    }
+
+    board.undoMove(move);
+  }
+  
+  return bestMove;
+}
+
+Color playout(Board& board, std::function<int(Board&)> policyMove){
   if (board.checkWin()){
     return board.currentEnemy();
   }
@@ -17,15 +58,22 @@ Color randomPlayout(Board& board){
     return Color::EMPTY;
   }
 
-  int newMove = randomMove(board);
+  int newMove = policyMove(board);
   board.makeMove(newMove);
-  Color val = randomPlayout(board);
+  Color val = playout(board, policyMove);
+  auto encoding = board.encode();
+  myMap[encoding].visits++;
+  if (val == Color::BLACK){
+    myMap[encoding].bmrw += 1;
+  } else if (val == Color::RED){
+    myMap[encoding].bmrw -= 1;
+  }
   board.undoMove(newMove);
 
   return val;
 }
 
-int monteCarloMove(Board &board) {
+int treeSearch(Board &board, std::function<int(Board&)> policyMove) {
   auto moveList = board.getMoves();
 
   optional<int> maxVal = nullopt;
@@ -34,8 +82,8 @@ int monteCarloMove(Board &board) {
   for (auto move : moveList) {
     board.makeMove(move);
     int total = 0;
-    for (int i = 0; i < 100000; i++) {
-      auto outcome = randomPlayout(board);
+    for (int i = 0; i < 50000; i++) {
+      auto outcome = playout(board, policyMove);
       if (outcome == board.currentEnemy()){
         total += 1;
       } else if (outcome == board.currentPlayer()){
@@ -61,7 +109,7 @@ int main() {
   srand(time(0));
 
   Board board;
-  // cout << randomPlayout(board);
+  // cout << UCTPlayout(board);
   bool humanX, humanO;
 
   cout << "Is X a human? (1 = yes, 0 = no): ";
@@ -81,7 +129,11 @@ int main() {
       cin >> move;
     } else {
       // AI makes a move
-      move = monteCarloMove(board);
+      if(currentPlayer == Color::BLACK){
+        move = treeSearch(board, UCBPolicy);
+      } else {
+        move = treeSearch(board, randomPolicy);
+      }
       cout << "AI chose move: " << move << endl;
     }
 
