@@ -55,16 +55,18 @@ bool Board::makeMove(const size_t column) {
 
   if (auto lowestEmptyRow = getLowestEmptyRow_(column); lowestEmptyRow.has_value()) {
     board_[lowestEmptyRow.value()][column] = currentPlayer();
-    movesMade_++;
-    lastColumn_ = column;
+    history.push(column);
     return true;
   }
   return false;
 }
-bool Board::undoMove(const size_t column) {
+bool Board::undoMove() {
+  if(history.empty()) return false;
+
+  auto column = history.top();
   if (auto highestOccupiedRow = getHighestOccupiedRow_(column); highestOccupiedRow.has_value()) {
     board_[highestOccupiedRow.value()][column] = Color::EMPTY;
-    movesMade_--;
+    history.pop();
     return true;
   }
   return false;
@@ -95,14 +97,14 @@ void Board::print(std::ostream& out) const {
   out << '\n';
 }
 Color Board::currentPlayer() const {
-  if(movesMade_ % 2 == 0){
+  if(history.size() % 2 == 0){
     return Color::BLACK;
   } else {
     return Color::RED;
   }
 }
 Color Board::currentEnemy() const {
-  if(movesMade_ % 2 == 0){
+  if(history.size() % 2 == 0){
     return Color::RED;
   } else {
     return Color::BLACK;
@@ -119,12 +121,12 @@ std::vector<size_t> Board::getMoves() const {
 }
 
 bool Board::checkWin() const {
-  if(!lastColumn_.has_value()) return false;
-  auto lastRowOpt = getHighestOccupiedRow_(lastColumn_.value());
+  if(history.empty() || !history.top()) return false;
+  auto lastRowOpt = getHighestOccupiedRow_(history.top());
   if (!lastRowOpt.has_value()) return false;
 
   auto lastRow = lastRowOpt.value();
-  auto lastColumn = lastColumn_.value();
+  auto lastColumn = history.top();
 
   int maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
   Color lastPiece = currentEnemy();
