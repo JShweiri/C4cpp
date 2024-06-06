@@ -7,19 +7,18 @@ uint64_t Board::encode() const {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     auto rowOpt = getLowestEmptyRow_(column);
     uint8_t row = rowOpt.has_value() ? rowOpt.value() + 1 : 0;
-    bitboard |= (uint64_t)1 << (row * 7 + column);
+    bitboard |= (uint64_t)1 << (row * 7 + column); // Add flag above top of column
     for (; row < NUM_ROWS; ++row) {
       if (board_[row][column] == Color::BLACK) {
-        bitboard |= (uint64_t)1 << ((row+1) * 7 + column);
+        bitboard |= (uint64_t)1 << ((row+1) * 7 + column); // Below the flag 0 represents Red (O) and 1 Black (X)
       }
     }
   }
   return bitboard;
 }
-
 void Board::decode(uint64_t bitboard) {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
-    bool flag = false;
+    bool flag = false; // bits below the flag represent pieces
     for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
       if(flag){
         if(bitboard & ((uint64_t)1 << (row * 7 + column))){
@@ -33,7 +32,6 @@ void Board::decode(uint64_t bitboard) {
     }
   }
 }
-
 std::optional<uint8_t> Board::getLowestEmptyRow_(uint8_t column) const {
   for (int row = NUM_ROWS - 1; row >= 0; --row){ // int because it needs to be briefly negative to break loop
     if (board_[row][column] == Color::EMPTY) {
@@ -117,7 +115,6 @@ std::vector<uint8_t> Board::getMoves() const {
   }
   return availableMoves;
 }
-
 bool Board::checkWin() const {
   if(!lastColumn_.has_value()) return false;
   auto lastRowOpt = getHighestOccupiedRow_(lastColumn_.value());

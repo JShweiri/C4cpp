@@ -9,13 +9,13 @@
 class Board {
  public:
   bool makeMove(const uint8_t column);
-  bool undoMove(const uint8_t column);
+  bool undoMove(const uint8_t column); // This class is not responsible for storing the history of moves.
   void print() const;
   void print(std::ostream& out) const;
   Color currentPlayer() const;
   Color currentEnemy() const;
   std::vector<uint8_t> getMoves() const;
-  bool checkWin() const;
+  bool checkWin() const; // Checks if currentEnemy won.
   bool checkDraw() const;
   bool gameOver() const;
   uint64_t encode() const;
