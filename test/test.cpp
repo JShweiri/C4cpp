@@ -43,7 +43,7 @@ TEST(BoardTest, UndoMove) {
 
 TEST(BoardTest, GetMoves) {
   Board board;
-  std::vector<size_t> expectedMoves = {0, 1, 2, 3, 4, 5, 6};
+  std::vector<uint8_t> expectedMoves = {0, 1, 2, 3, 4, 5, 6};
   ASSERT_EQ(board.getMoves(), expectedMoves);
   board.makeMove(0);
   board.makeMove(0);
@@ -85,8 +85,8 @@ TEST(BoardTest, CheckWin) {
 
 TEST(BoardTest, CheckDraw) {
   Board board;
-  for (size_t i = 0; i < board.NUM_ROWS; ++i) {
-    for (size_t j = 0; j < board.NUM_COLUMNS; ++j) {
+  for (uint8_t i = 0; i < board.NUM_ROWS; ++i) {
+    for (uint8_t j = 0; j < board.NUM_COLUMNS; ++j) {
       if (i == board.NUM_ROWS - 1 && j == board.NUM_COLUMNS - 1) {
         break; 
       }
@@ -110,8 +110,8 @@ TEST(BoardTest, GameOver) {
 
   // Draw condition
   Board board2;
-  for (size_t i = 0; i < board2.NUM_ROWS; ++i) {
-    for (size_t j = 0; j < board2.NUM_COLUMNS; ++j) {
+  for (uint8_t i = 0; i < board2.NUM_ROWS; ++i) {
+    for (uint8_t j = 0; j < board2.NUM_COLUMNS; ++j) {
       board2.makeMove(j);
     }
   }

@@ -1,12 +1,12 @@
 #include "board.hpp"
-size_t Board::NUM_ROWS = 6;
-size_t Board::NUM_COLUMNS = 7;
+const uint8_t Board::NUM_ROWS = 6;
+const uint8_t Board::NUM_COLUMNS = 7;
 
 uint64_t Board::encode() const {
   uint64_t bitboard = 0;
-  for (size_t column = 0; column < NUM_COLUMNS; ++column) {
+  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     auto rowOpt = getLowestEmptyRow_(column);
-    size_t row = rowOpt.has_value() ? rowOpt.value() + 1 : 0;
+    uint8_t row = rowOpt.has_value() ? rowOpt.value() + 1 : 0;
     bitboard |= (uint64_t)1 << (row * 7 + column);
     for (; row < NUM_ROWS; ++row) {
       if (board_[row][column] == Color::BLACK) {
@@ -18,9 +18,9 @@ uint64_t Board::encode() const {
 }
 
 void Board::decode(uint64_t bitboard) {
-  for (size_t column = 0; column < NUM_COLUMNS; ++column) {
+  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     bool flag = false;
-    for (size_t row = 0; row < NUM_ROWS+1; ++row) {
+    for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
       if(flag){
         if(bitboard & ((uint64_t)1 << (row * 7 + column))){
           board_[row-1][column] = Color::BLACK;
@@ -34,7 +34,7 @@ void Board::decode(uint64_t bitboard) {
   }
 }
 
-std::optional<size_t> Board::getLowestEmptyRow_(size_t column) const {
+std::optional<uint8_t> Board::getLowestEmptyRow_(uint8_t column) const {
   for (int row = NUM_ROWS - 1; row >= 0; --row){ // int because it needs to be briefly negative to break loop
     if (board_[row][column] == Color::EMPTY) {
       return row;
@@ -42,15 +42,15 @@ std::optional<size_t> Board::getLowestEmptyRow_(size_t column) const {
   }
   return std::nullopt;
 }
-std::optional<size_t> Board::getHighestOccupiedRow_(size_t column) const {
-  for (size_t row = 0; row < NUM_ROWS; ++row){
+std::optional<uint8_t> Board::getHighestOccupiedRow_(uint8_t column) const {
+  for (uint8_t row = 0; row < NUM_ROWS; ++row){
     if (board_[row][column] != Color::EMPTY) {
       return row;
     }
   }
   return std::nullopt;
 }
-bool Board::makeMove(const size_t column) {
+bool Board::makeMove(const uint8_t column) {
   if(column >= NUM_COLUMNS) return false;
 
   if (auto lowestEmptyRow = getLowestEmptyRow_(column); lowestEmptyRow.has_value()) {
@@ -61,7 +61,7 @@ bool Board::makeMove(const size_t column) {
   }
   return false;
 }
-bool Board::undoMove(const size_t column) {
+bool Board::undoMove(const uint8_t column) {
   if (auto highestOccupiedRow = getHighestOccupiedRow_(column); highestOccupiedRow.has_value()) {
     board_[highestOccupiedRow.value()][column] = Color::EMPTY;
     movesMade_--;
@@ -89,7 +89,7 @@ void Board::print(std::ostream& out) const {
   }
 
   out << "|";
-  for (size_t i = 0; i < NUM_COLUMNS; i++) {
+  for (size_t i = 0; i < NUM_COLUMNS; i++) { // TODO: understand why had to leave size_t..
     out << i << "|";
   }
   out << '\n';
@@ -108,9 +108,9 @@ Color Board::currentEnemy() const {
     return Color::BLACK;
   }
 }
-std::vector<size_t> Board::getMoves() const {
-  std::vector<size_t> availableMoves;
-  for (size_t col = 0; col < NUM_COLUMNS; ++col) {
+std::vector<uint8_t> Board::getMoves() const {
+  std::vector<uint8_t> availableMoves;
+  for (uint8_t col = 0; col < NUM_COLUMNS; ++col) {
     if (getLowestEmptyRow_(col).has_value()) {
       availableMoves.push_back(col);
     }
@@ -131,12 +131,12 @@ bool Board::checkWin() const {
 
   // go down the column
   for (int i = 1; i < maxSquareSize; i++){
-    size_t newRow = lastRow + i;
+    uint8_t newRow = lastRow + i;
 
     // check if found a matching piece i below the given piece
     if (newRow < NUM_ROWS && board_[newRow][lastColumn] == lastPiece){
-      size_t leftColumn = lastColumn - i;
-      size_t rightColumn = lastColumn + i;
+      uint8_t leftColumn = lastColumn - i;
+      uint8_t rightColumn = lastColumn + i;
 
       // check left square
       if (leftColumn >= 0 && board_[lastRow][leftColumn] == lastPiece && board_[newRow][leftColumn] == lastPiece){
@@ -153,7 +153,7 @@ bool Board::checkWin() const {
   return false;
 }
 bool Board::checkDraw() const {
-  for (size_t i = 0; i < NUM_COLUMNS; i++){
+  for (uint8_t i = 0; i < NUM_COLUMNS; i++){
     if (board_[0][i] == Color::EMPTY){
       return false;
     }

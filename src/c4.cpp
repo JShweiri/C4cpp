@@ -43,7 +43,7 @@ int main() {
     Color currentPlayer = board.currentPlayer();
     cout << "Player " << currentPlayer << "'s turn.\n";
 
-    size_t move;
+    size_t move;  // TODO: understand why had to leave size_t..
     if ((currentPlayer == Color::BLACK && humanX) || (currentPlayer == Color::RED && humanO)) {
       cout << "Enter your move (0-" << Board::NUM_COLUMNS - 1 << "): ";
       cin >> move;
