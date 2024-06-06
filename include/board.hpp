@@ -18,6 +18,8 @@ class Board {
   bool checkWin() const;
   bool checkDraw() const;
   bool gameOver() const;
+  uint64_t encode() const;
+  void decode(uint64_t bitboard);
 
   static size_t NUM_ROWS;
   static size_t NUM_COLUMNS;

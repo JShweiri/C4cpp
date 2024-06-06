@@ -2,6 +2,38 @@
 size_t Board::NUM_ROWS = 6;
 size_t Board::NUM_COLUMNS = 7;
 
+uint64_t Board::encode() const {
+  uint64_t bitboard = 0;
+  for (size_t column = 0; column < NUM_COLUMNS; ++column) {
+    auto rowOpt = getLowestEmptyRow_(column);
+    size_t row = rowOpt.has_value() ? rowOpt.value() + 1 : 0;
+    bitboard |= (uint64_t)1 << (row * 7 + column);
+    for (; row < NUM_ROWS; ++row) {
+      if (board_[row][column] == Color::BLACK) {
+        bitboard |= (uint64_t)1 << ((row+1) * 7 + column);
+      }
+    }
+  }
+  return bitboard;
+}
+
+void Board::decode(uint64_t bitboard) {
+  for (size_t column = 0; column < NUM_COLUMNS; ++column) {
+    bool flag = false;
+    for (size_t row = 0; row < NUM_ROWS+1; ++row) {
+      if(flag){
+        if(bitboard & ((uint64_t)1 << (row * 7 + column))){
+          board_[row-1][column] = Color::BLACK;
+        } else {
+          board_[row-1][column] = Color::RED;
+        }
+      } else if (bitboard & ((uint64_t)1 << (row * 7 + column))) {
+        flag = true;
+      }
+    }
+  }
+}
+
 std::optional<size_t> Board::getLowestEmptyRow_(size_t column) const {
   for (int row = NUM_ROWS - 1; row >= 0; --row){ // int because it needs to be briefly negative to break loop
     if (board_[row][column] == Color::EMPTY) {
