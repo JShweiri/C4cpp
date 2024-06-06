@@ -9,27 +9,59 @@ int randomMove(const Board& board){
   return v[rand() % v.size()];
 }
 
-int randomPlayout(Board& board){
+Color randomPlayout(Board& board){
   if (board.checkWin()){
-    auto winningPiece = board.currentEnemy();
-    return ((winningPiece == Color::BLACK) ? 1 : -1);
+    return board.currentEnemy();
   }
   if (board.checkDraw()){
-    return 0;
+    return Color::EMPTY;
   }
 
   int newMove = randomMove(board);
   board.makeMove(newMove);
-  int val = randomPlayout(board);
+  Color val = randomPlayout(board);
   board.undoMove(newMove);
 
   return val;
+}
+
+int monteCarloMove(Board &board) {
+  auto moveList = board.getMoves();
+
+  optional<int> maxVal = nullopt;
+  int bestMove = 0;
+
+  for (auto move : moveList) {
+    board.makeMove(move);
+    int total = 0;
+    for (int i = 0; i < 100000; i++) {
+      auto outcome = randomPlayout(board);
+      if (outcome == board.currentEnemy()){
+        total += 1;
+      } else if (outcome == board.currentPlayer()){
+        total -= 1;
+      }
+    }
+    board.undoMove(move);
+    cout << move << ": " << total << endl;
+
+    if(!maxVal.has_value()){
+      maxVal = total;
+    }
+
+    if (total > maxVal) {
+      maxVal = total;
+      bestMove = move;
+    }
+  }
+  return bestMove;
 }
 
 int main() {
   srand(time(0));
 
   Board board;
+  // cout << randomPlayout(board);
   bool humanX, humanO;
 
   cout << "Is X a human? (1 = yes, 0 = no): ";
@@ -49,7 +81,7 @@ int main() {
       cin >> move;
     } else {
       // AI makes a move
-      move = randomMove(board);
+      move = monteCarloMove(board);
       cout << "AI chose move: " << move << endl;
     }
 
