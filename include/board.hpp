@@ -7,11 +7,11 @@
 #include <stack>
 #include <cmath>
 #include <algorithm>
+
 #define BLACK 1
 #define RED 0
-
-  typedef uint8_t Color; // typedefed in case we want to switch to a class. Also good for self explanation instead of just seeing uint8_ts everywhere. no context needed
-  typedef uint64_t Board;// ^
+typedef uint8_t Color; // typedefed in case we want to switch to a class. Also good for self explanation instead of just seeing uint8_ts everywhere. no context needed
+typedef uint64_t Board;// ^
 class C4Game {
  public:
   bool makeMove(const uint8_t column);
@@ -32,7 +32,7 @@ class C4Game {
  private:
   std::optional<uint8_t> getLowestEmptyRow_(uint8_t column) const;
   std::optional<uint8_t> getHighestOccupiedRow_(uint8_t column) const;
-  Board state_ = ((int)pow(2, NUM_COLUMNS) - 1) << (64-49);
+  Board state_ = ((int)pow(2, NUM_COLUMNS) - 1) << (64-(NUM_ROWS+1)*NUM_COLUMNS);
   std::stack<uint8_t> history_;
 };
 #endif

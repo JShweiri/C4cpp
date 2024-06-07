@@ -1,17 +1,21 @@
 #include "board.hpp"
 const uint8_t C4Game::NUM_ROWS = 6;
 const uint8_t C4Game::NUM_COLUMNS = 7;
+
+inline uint64_t rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns) {
+    return (uint64_t)1 << (63 - (row * numColumns + column));
+}
+
 bool C4Game::makeMove(const uint8_t column) {
   if(column >= NUM_COLUMNS) return false;
-
   for (uint8_t row = 0; row < NUM_ROWS; ++row) {
-    if (!(state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) &&
-        (state_ & ((uint64_t)1 << ((row+1) * NUM_COLUMNS + column)))) {
+    if (!(state_ & rowColToOHE(row,column,NUM_COLUMNS)) &&
+         (state_ & rowColToOHE(row+1,column,NUM_COLUMNS))) {
         if(currentPlayer() == BLACK){
-        state_ |= ((uint64_t)1 << (row * NUM_COLUMNS + column));
+          state_ |= rowColToOHE(row,column,NUM_COLUMNS);
         } else {
-        state_ |= ((uint64_t)1 << (row * NUM_COLUMNS + column));
-        state_ &= ~((uint64_t)1 << ((row+1) * NUM_COLUMNS + column));
+          state_ |= rowColToOHE(row,column,NUM_COLUMNS);
+          state_ &= ~rowColToOHE(row+1,column,NUM_COLUMNS);
         }
         return true;
     }
@@ -23,9 +27,9 @@ bool C4Game::undoMove() {
   auto column = history_.top();
 
   for (uint8_t row = 0; row < NUM_ROWS; ++row) {
-    if (state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) {
-      state_ &= ~((uint64_t)1 << (row * NUM_COLUMNS + column));
-      state_ |= ((uint64_t)1 << ((row+1) * NUM_COLUMNS + column));
+    if (state_ & rowColToOHE(row,column,NUM_COLUMNS)) {
+      state_ &= ~rowColToOHE(row,column,NUM_COLUMNS);
+      state_ |= rowColToOHE(row+1,column,NUM_COLUMNS);
       history_.pop();
       return true;
     }
@@ -43,7 +47,7 @@ void C4Game::printRaw() const {
 void C4Game::printBinary(bool showExtra, char lineSep) const {
   for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
-    if(state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))){
+    if(state_ & rowColToOHE(row,column,NUM_COLUMNS)){
       std::cout << 1;
     } else {
       std::cout << 0;
@@ -67,13 +71,13 @@ void C4Game::print(std::ostream& out) const {
   for (uint8_t row = 0; row < NUM_ROWS; ++row) {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     if(flags[column]){
-      if(state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))){
+      if(state_ & rowColToOHE(row,column,NUM_COLUMNS)){
         out << "X";
       } else {
         out << "O";
       }
     } else {
-      if (state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))) {
+      if (state_ & rowColToOHE(row,column,NUM_COLUMNS)) {
       flags[column] = true;
       } else {
         out << "-";
