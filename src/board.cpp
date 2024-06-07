@@ -1,149 +1,135 @@
 #include "board.hpp"
-const uint8_t Board::NUM_ROWS = 6;
-const uint8_t Board::NUM_COLUMNS = 7;
-
-uint64_t Board::encode() const {
-  uint64_t bitboard = 0;
-  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
-    auto rowOpt = getLowestEmptyRow_(column);
-    uint8_t row = rowOpt.has_value() ? rowOpt.value() + 1 : 0;
-    bitboard |= (uint64_t)1 << (row * NUM_COLUMNS + column); // Add flag above top of column
-    for (; row < NUM_ROWS; ++row) {
-      if (board_[row][column] == Color::BLACK) {
-        bitboard |= (uint64_t)1 << ((row+1) * NUM_COLUMNS + column); // Below the flag 0 represents Red (O) and 1 Black (X)
-      }
-    }
-  }
-  return bitboard;
-}
-void Board::decode(uint64_t bitboard) {
-  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
-    bool flag = false; // bits below the flag represent pieces
-    for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
-      if(flag){
-        if(bitboard & ((uint64_t)1 << (row * NUM_COLUMNS + column))){
-          board_[row-1][column] = Color::BLACK;
-        } else {
-          board_[row-1][column] = Color::RED;
-        }
-      } else if (bitboard & ((uint64_t)1 << (row * NUM_COLUMNS + column))) {
-        flag = true;
-      }
-    }
-  }
-}
-std::optional<uint8_t> Board::getLowestEmptyRow_(uint8_t column) const {
-  for (uint8_t row = NUM_ROWS; row > 0; --row){ // need to skew by one to prevent unisgned underflow
-    if (board_[row-1][column] == Color::EMPTY) {
-      return row-1;
-    }
-  }
-  return std::nullopt;
-}
-std::optional<uint8_t> Board::getHighestOccupiedRow_(uint8_t column) const {
-  for (uint8_t row = 0; row < NUM_ROWS; ++row){
-    if (board_[row][column] != Color::EMPTY) {
-      return row;
-    }
-  }
-  return std::nullopt;
-}
-bool Board::makeMove(const uint8_t column) {
+const uint8_t C4Game::NUM_ROWS = 6;
+const uint8_t C4Game::NUM_COLUMNS = 7;
+bool C4Game::makeMove(const uint8_t column) {
   if(column >= NUM_COLUMNS) return false;
 
-  if (auto lowestEmptyRow = getLowestEmptyRow_(column); lowestEmptyRow.has_value()) {
-    board_[lowestEmptyRow.value()][column] = currentPlayer();
-    history.push(column);
-    return true;
+  for (uint8_t row = 0; row < NUM_ROWS; ++row) {
+    if (!(state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) &&
+        (state_ & ((uint64_t)1 << ((row+1) * NUM_COLUMNS + column)))) {
+        // black
+        state_ |= ((uint64_t)1 << (row * NUM_COLUMNS + column));
+        // red
+        state_ |= ((uint64_t)1 << (row * NUM_COLUMNS + column));
+        state_ &= ~((uint64_t)1 << ((row+1) * NUM_COLUMNS + column));
+        return true;
+    }
   }
   return false;
 }
-bool Board::undoMove() {
-  if(history.empty()) return false;
+bool C4Game::undoMove() {
+  if(history_.empty()) return false;
+  auto column = history_.top();
 
-  auto column = history.top();
-  if (auto highestOccupiedRow = getHighestOccupiedRow_(column); highestOccupiedRow.has_value()) {
-    board_[highestOccupiedRow.value()][column] = Color::EMPTY;
-    history.pop();
-    return true;
+  for (uint8_t row = 0; row < NUM_ROWS; ++row) {
+    if (state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) {
+      state_ &= ~((uint64_t)1 << (row * NUM_COLUMNS + column));
+      state_ |= ((uint64_t)1 << ((row+1) * NUM_COLUMNS + column));
+      history_.pop();
+      return true;
+    }
   }
   return false;
 }
-void Board::print() const {
+void C4Game::print() const {
   print(std::cout);
 }
-void Board::print(std::ostream& out) const { 
-  for (auto row : board_) {
-    out << "|";
-    for (auto space : row) {
-      if (space == Color::EMPTY) {
-        out << "-";
-      } else if (space == Color::BLACK) {
+
+void C4Game::printRaw() const {
+  std::cout << state_ << std::endl;
+}
+
+void C4Game::printBinary() const {
+  for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
+  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
+    if(state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))){
+      std::cout << 1;
+    } else {
+      std::cout << 0;
+    }
+  }
+  }
+  std::cout << std::endl;
+}
+
+// void C4Game::printBinaryFormatted() const {
+//   std::cout << state_;
+// }
+
+void C4Game::print(std::ostream& out) const {
+  bool flags[NUM_COLUMNS];
+  for (uint8_t row = 0; row < NUM_ROWS; ++row) {
+  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
+    if(flags[column]){
+      if(state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))){
         out << "X";
-      } else if (space == Color::RED) {
+      } else {
         out << "O";
       }
-      out << "|";
-    }
-    out << "\n";
+    } else {
+      if (state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))) {
+      flags[column] = true;
+      } else {
+        out << "-";
+      }
+      }
   }
-
-  out << "|";
-  for (uint8_t i = 0; i < NUM_COLUMNS; i++) {
-    out << +i << "|";
+  out << "\n";
   }
-  out << '\n';
 }
-Color Board::currentPlayer() const {
-  if(history.size() % 2 == 0){
-    return Color::BLACK;
+Color C4Game::currentPlayer() const {
+  if(history_.size() % 2 == 0){
+    return 1;
   } else {
-    return Color::RED;
+    return 0;
   }
 }
-Color Board::currentEnemy() const {
-  if(history.size() % 2 == 0){
-    return Color::RED;
+Color C4Game::currentEnemy() const {
+  if(history_.size() % 2 == 0){
+    return 0;
   } else {
-    return Color::BLACK;
+    return 1;
   }
 }
-std::vector<uint8_t> Board::getMoves() const {
+std::vector<uint8_t> C4Game::getMoves() const {
   std::vector<uint8_t> availableMoves;
-  for (uint8_t col = 0; col < NUM_COLUMNS; ++col) {
-    if (getLowestEmptyRow_(col).has_value()) {
-      availableMoves.push_back(col);
+  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
+    if (!(state_ & ((uint64_t)1 << (0 * NUM_COLUMNS + column)))) {
+      availableMoves.push_back(column);
     }
   }
   return availableMoves;
 }
-bool Board::checkWin() const {
-  if(history.empty() || !history.top()) return false;
-  auto lastRowOpt = getHighestOccupiedRow_(history.top());
-  if (!lastRowOpt.has_value()) return false;
-
-  auto lastRow = lastRowOpt.value();
-  auto lastColumn = history.top();
+//... Continue changing to bitboard from here
+bool C4Game::checkWin() const {
+  if(history_.empty()) return false;
+  auto column = history_.top();
+  uint8_t row = 0;
+  for (; row < NUM_ROWS; ++row) {
+    if (state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) {
+      break;
+    }
+  }
 
   uint8_t maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
   Color lastPiece = currentEnemy();
 
   // go down the column
   for (uint8_t i = 1; i < maxSquareSize; i++){
-    uint8_t newRow = lastRow + i;
+    uint8_t bottomRow = row + i;
 
     // check if found a matching piece i below the given piece
-    if (newRow < NUM_ROWS && board_[newRow][lastColumn] == lastPiece){
-      uint8_t leftColumn = lastColumn - i;
-      uint8_t rightColumn = lastColumn + i;
+    if (bottomRow < NUM_ROWS && (state_ >> (bottomRow * NUM_COLUMNS + column) & (uint64_t)1) == lastPiece){
+      uint8_t leftColumn = column - i;
+      uint8_t rightColumn = column + i;
 
       // check left square
-      if (leftColumn >= 0 && board_[lastRow][leftColumn] == lastPiece && board_[newRow][leftColumn] == lastPiece){
+      if (leftColumn >= 0 && (state_ >> (row * NUM_COLUMNS + leftColumn) & (uint64_t)1) == lastPiece && (state_ >> (bottomRow * NUM_COLUMNS + leftColumn) & (uint64_t)1) == lastPiece){
         return true;
       }
 
       // check right square
-      if (rightColumn < NUM_COLUMNS && board_[lastRow][rightColumn] == lastPiece && board_[newRow][rightColumn] == lastPiece){
+      if (rightColumn < NUM_COLUMNS && (state_ >> (row * NUM_COLUMNS + rightColumn) & (uint64_t)1) == lastPiece && (state_ >> (bottomRow * NUM_COLUMNS + rightColumn) & (uint64_t)1) == lastPiece){
         return true;
       }
     }
@@ -151,14 +137,14 @@ bool Board::checkWin() const {
 
   return false;
 }
-bool Board::checkDraw() const {
-  for (uint8_t i = 0; i < NUM_COLUMNS; i++){
-    if (board_[0][i] == Color::EMPTY){
+bool C4Game::checkDraw() const {
+  for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
+    if (!(state_ & ((uint64_t)1 << (0 * NUM_COLUMNS + column)))) {
       return false;
     }
   }
   return true;
 }
-bool Board::gameOver() const {
+bool C4Game::gameOver() const {
 return (checkWin() || checkDraw());
 }
