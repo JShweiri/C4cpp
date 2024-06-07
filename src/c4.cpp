@@ -62,7 +62,7 @@ uint8_t UCBPolicy(Board& board) {
       bestMoves.push_back(move);
     }
 
-    board.undoMove(move);
+    board.undoMove();
   }
 
   if (!bestMoves.empty()) {
@@ -93,7 +93,7 @@ Color playout(Board& board, std::function<int(Board&)> movePolicy) {
       myMap[encoding].redWins += 1; // Red wins should be incremented
     }
   }
-  board.undoMove(newMove);
+  board.undoMove();
 
   return val;
 }
@@ -109,7 +109,7 @@ void evaluateMove(Board board, uint8_t move, std::function<int(Board&)> movePoli
       total -= 1;
     }
   }
-  board.undoMove(move);
+  board.undoMove();
 
   std::lock_guard<std::mutex> lock(resultMutex);
   if (!maxVal.has_value() || total > *maxVal) {

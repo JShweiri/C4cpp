@@ -4,12 +4,13 @@
 #include <iostream>
 #include <optional>
 #include <vector>
+#include <stack>
 #include <algorithm>
 #include "color.hpp"
 class Board {
  public:
   bool makeMove(const uint8_t column);
-  bool undoMove(const uint8_t column); // This class is not responsible for storing the history of moves.
+  bool undoMove();
   void print() const;
   void print(std::ostream& out) const;
   Color currentPlayer() const;
@@ -27,7 +28,6 @@ class Board {
   std::optional<uint8_t> getLowestEmptyRow_(uint8_t column) const;
   std::optional<uint8_t> getHighestOccupiedRow_(uint8_t column) const;
   std::vector<std::vector<Color>> board_{NUM_ROWS, std::vector<Color>(NUM_COLUMNS, Color::EMPTY)};
-  uint8_t movesMade_ = 0;
-  std::optional<uint8_t> lastColumn_ = std::nullopt;
+  std::stack<uint8_t> history;
 };
 #endif
