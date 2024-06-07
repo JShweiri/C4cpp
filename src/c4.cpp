@@ -7,77 +7,90 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <optional>
+#include <cstdlib>
+#include <ctime>
 
 using namespace std;
 
 struct Data {
-  double visits;
-  // Black minus Red wins after visiting this state
-  double bmrw;
+  double visits = 0;
+  double blackWins = 0;
+  double redWins = 0;
 };
 
 std::unordered_map<uint64_t, Data> myMap;
 std::mutex mapMutex;
 
-int randomPolicy(const Board& board){
+uint8_t randomPolicy(const Board& board) {
   auto v = board.getMoves();
   return v[rand() % v.size()];
 }
 
-// Broken. TODO: fix.
-int UCBPolicy(Board& board) {
-  auto c = sqrt(2.5); // Ensure `c` is of type double
+uint8_t UCBPolicy(Board& board) {
+  const double c = 10000.0; // Ensure `c` is of type double
   auto v = board.getMoves();
   auto parentEncoding = board.encode();
 
   optional<double> maxScore = nullopt; // Use double for maxScore
-  int bestMove = 0;
+  vector<int> bestMoves;
+
+  double parentVisits;
+  {
+    std::lock_guard<std::mutex> lock(mapMutex);
+    parentVisits = myMap[parentEncoding].visits + 2; // Avoid log(0)
+  }
 
   for (auto move : v) {
     board.makeMove(move);
     auto childEncoding = board.encode();
-    
-    // Check for visits to avoid division by zero and log of zero
-    double childVisits, parentVisits;
+
+    double childVisits, wins;
     {
       std::lock_guard<std::mutex> lock(mapMutex);
-      childVisits = myMap[childEncoding].visits + 1;
-      parentVisits = myMap[parentEncoding].visits + 1; // Avoid log(0)
+      childVisits = myMap[childEncoding].visits + 2; // Avoid division by zero
+      wins = (board.currentPlayer() == Color::BLACK ? myMap[childEncoding].blackWins : myMap[childEncoding].redWins);
     }
 
-    double score = myMap[childEncoding].bmrw / childVisits
-                  + c * sqrt(log(parentVisits) / childVisits);
+    double score = wins / childVisits + c * sqrt(log(parentVisits) / childVisits);
 
     if (!maxScore.has_value() || score > *maxScore) {
       maxScore = score;
-      bestMove = move;
+      bestMoves.clear();
+      bestMoves.push_back(move);
+    } else if (score == *maxScore) {
+      bestMoves.push_back(move);
     }
 
     board.undoMove(move);
   }
-  
-  return bestMove;
+
+  if (!bestMoves.empty()) {
+    return bestMoves[rand() % bestMoves.size()];
+  }
+
+  return bestMoves[0]; // Fallback in case bestMoves is empty
 }
 
-Color playout(Board& board, std::function<int(Board&)> movePolicy){
-  if (board.checkWin()){
+Color playout(Board& board, std::function<int(Board&)> movePolicy) {
+  if (board.checkWin()) {
     return board.currentEnemy();
   }
-  if (board.checkDraw()){
+  if (board.checkDraw()) {
     return Color::EMPTY;
   }
 
-  int newMove = movePolicy(board);
+  uint8_t newMove = movePolicy(board);
   board.makeMove(newMove);
   Color val = playout(board, movePolicy);
   auto encoding = board.encode();
   {
     std::lock_guard<std::mutex> lock(mapMutex);
     myMap[encoding].visits++;
-    if (val == Color::BLACK){
-      myMap[encoding].bmrw += 1;
-    } else if (val == Color::RED){
-      myMap[encoding].bmrw -= 1;
+    if (val == Color::BLACK) {
+      myMap[encoding].blackWins += 1;
+    } else if (val == Color::RED) {
+      myMap[encoding].redWins += 1; // Red wins should be incremented
     }
   }
   board.undoMove(newMove);
@@ -85,14 +98,14 @@ Color playout(Board& board, std::function<int(Board&)> movePolicy){
   return val;
 }
 
-void evaluateMove(Board board, int move, std::function<int(Board&)> movePolicy, int &bestMove, optional<int> &maxVal, std::mutex &resultMutex) {
+void evaluateMove(Board board, uint8_t move, std::function<int(Board&)> movePolicy, int numSimulations, uint8_t& bestMove, optional<int>& maxVal, std::mutex& resultMutex) {
   board.makeMove(move);
   int total = 0;
-  for (int i = 0; i < 50000; i++) {
+  for (int i = 0; i < numSimulations; i++) {
     auto outcome = playout(board, movePolicy);
-    if (outcome == board.currentEnemy()){
+    if (outcome == board.currentEnemy()) {
       total += 1;
-    } else if (outcome == board.currentPlayer()){
+    } else if (outcome == board.currentPlayer()) {
       total -= 1;
     }
   }
@@ -103,21 +116,21 @@ void evaluateMove(Board board, int move, std::function<int(Board&)> movePolicy, 
     maxVal = total;
     bestMove = move;
   }
-  cout << move << ": " << total << endl;
+  cout << +move << ": " << total << endl;
 }
 
-int treeSearch(Board &board, std::function<int(Board&)> movePolicy) {
+uint8_t treeSearch(Board& board, std::function<int(Board&)> movePolicy, int numSimulations = 10000) {
   auto moveList = board.getMoves();
   optional<int> maxVal = nullopt;
-  int bestMove = 0;
+  uint8_t bestMove = 0;
   std::mutex resultMutex;
 
   std::vector<std::thread> threads;
   for (auto move : moveList) {
-    threads.emplace_back(evaluateMove, board, move, movePolicy, std::ref(bestMove), std::ref(maxVal), std::ref(resultMutex));
+    threads.emplace_back(evaluateMove, board, move, movePolicy, numSimulations, std::ref(bestMove), std::ref(maxVal), std::ref(resultMutex));
   }
 
-  for (auto &thread : threads) {
+  for (auto& thread : threads) {
     thread.join();
   }
 
@@ -128,7 +141,6 @@ int main() {
   srand(time(0));
 
   Board board;
-  // cout << UCTPlayout(board);
   bool humanX, humanO;
 
   cout << "Is X a human? (1 = yes, 0 = no): ";
@@ -136,22 +148,22 @@ int main() {
   cout << "Is O a human? (1 = yes, 0 = no): ";
   cin >> humanO;
 
-  while (!board.gameOver()){
+  while (!board.gameOver()) {
     board.print();
 
     Color currentPlayer = board.currentPlayer();
     cout << "Player " << currentPlayer << "'s turn.\n";
 
-    size_t move;  // TODO: understand why had to leave size_t..
+    size_t move;
     if ((currentPlayer == Color::BLACK && humanX) || (currentPlayer == Color::RED && humanO)) {
       cout << "Enter your move (0-" << Board::NUM_COLUMNS - 1 << "): ";
       cin >> move;
     } else {
       // AI makes a move
-      if(currentPlayer == Color::BLACK){
-        move = treeSearch(board, UCBPolicy);
+      if (currentPlayer == Color::BLACK) {
+        move = treeSearch(board, UCBPolicy, 50000);
       } else {
-        move = treeSearch(board, randomPolicy);
+        move = treeSearch(board, randomPolicy, 50000);
       }
       cout << "AI chose move: " << move << endl;
     }

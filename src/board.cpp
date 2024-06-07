@@ -33,9 +33,9 @@ void Board::decode(uint64_t bitboard) {
   }
 }
 std::optional<uint8_t> Board::getLowestEmptyRow_(uint8_t column) const {
-  for (int row = NUM_ROWS - 1; row >= 0; --row){ // int because it needs to be briefly negative to break loop
-    if (board_[row][column] == Color::EMPTY) {
-      return row;
+  for (uint8_t row = NUM_ROWS; row > 0; --row){ // need to skew by one to prevent unisgned underflow
+    if (board_[row-1][column] == Color::EMPTY) {
+      return row-1;
     }
   }
   return std::nullopt;
@@ -87,8 +87,8 @@ void Board::print(std::ostream& out) const {
   }
 
   out << "|";
-  for (size_t i = 0; i < NUM_COLUMNS; i++) { // TODO: understand why had to leave size_t..
-    out << i << "|";
+  for (uint8_t i = 0; i < NUM_COLUMNS; i++) {
+    out << +i << "|";
   }
   out << '\n';
 }
@@ -106,8 +106,8 @@ Color Board::currentEnemy() const {
     return Color::BLACK;
   }
 }
-std::vector<size_t> Board::getMoves() const {
-  std::vector<size_t> availableMoves;
+std::vector<uint8_t> Board::getMoves() const {
+  std::vector<uint8_t> availableMoves;
   for (uint8_t col = 0; col < NUM_COLUMNS; ++col) {
     if (getLowestEmptyRow_(col).has_value()) {
       availableMoves.push_back(col);
@@ -123,11 +123,11 @@ bool Board::checkWin() const {
   auto lastRow = lastRowOpt.value();
   auto lastColumn = lastColumn_.value();
 
-  int maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
+  uint8_t maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
   Color lastPiece = currentEnemy();
 
   // go down the column
-  for (int i = 1; i < maxSquareSize; i++){
+  for (uint8_t i = 1; i < maxSquareSize; i++){
     uint8_t newRow = lastRow + i;
 
     // check if found a matching piece i below the given piece

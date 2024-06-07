@@ -14,7 +14,7 @@ class Board {
   void print(std::ostream& out) const;
   Color currentPlayer() const;
   Color currentEnemy() const;
-  std::vector<size_t> getMoves() const;
+  std::vector<uint8_t> getMoves() const;
   bool checkWin() const; // Checks if currentEnemy won.
   bool checkDraw() const;
   bool gameOver() const;
