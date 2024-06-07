@@ -7,11 +7,12 @@ bool C4Game::makeMove(const uint8_t column) {
   for (uint8_t row = 0; row < NUM_ROWS; ++row) {
     if (!(state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) &&
         (state_ & ((uint64_t)1 << ((row+1) * NUM_COLUMNS + column)))) {
-        // black
+        if(currentPlayer() == BLACK){
         state_ |= ((uint64_t)1 << (row * NUM_COLUMNS + column));
-        // red
+        } else {
         state_ |= ((uint64_t)1 << (row * NUM_COLUMNS + column));
         state_ &= ~((uint64_t)1 << ((row+1) * NUM_COLUMNS + column));
+        }
         return true;
     }
   }
@@ -39,7 +40,7 @@ void C4Game::printRaw() const {
   std::cout << state_ << std::endl;
 }
 
-void C4Game::printBinary() const {
+void C4Game::printBinary(bool showExtra, char lineSep) const {
   for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     if(state_ & ((uint64_t)1 << (63-(row * NUM_COLUMNS + column)))){
@@ -48,6 +49,11 @@ void C4Game::printBinary() const {
       std::cout << 0;
     }
   }
+  std::cout << lineSep;
+  }
+  if(showExtra){
+  std::cout << "|";
+  for(int i = 0; i < 64-(NUM_ROWS+1)*NUM_COLUMNS; i++) std::cout << "0";
   }
   std::cout << std::endl;
 }
@@ -57,7 +63,7 @@ void C4Game::printBinary() const {
 // }
 
 void C4Game::print(std::ostream& out) const {
-  bool flags[NUM_COLUMNS];
+  bool flags[NUM_COLUMNS] = {false};
   for (uint8_t row = 0; row < NUM_ROWS; ++row) {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     if(flags[column]){
