@@ -17,6 +17,7 @@ bool C4Game::makeMove(const uint8_t column) {
           state_ |= rowColToOHE(row,column,NUM_COLUMNS);
           state_ &= ~rowColToOHE(row+1,column,NUM_COLUMNS);
         }
+        history_.push(column);
         return true;
     }
   }
@@ -67,8 +68,8 @@ void C4Game::printBinary(bool showExtra, char lineSep) const {
 // }
 
 void C4Game::print(std::ostream& out) const {
-  bool flags[NUM_COLUMNS] = {false};
-  for (uint8_t row = 0; row < NUM_ROWS; ++row) {
+  bool flags[NUM_COLUMNS] = {};
+  for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
     if(flags[column]){
       if(state_ & rowColToOHE(row,column,NUM_COLUMNS)){
@@ -77,12 +78,11 @@ void C4Game::print(std::ostream& out) const {
         out << "O";
       }
     } else {
-      if (state_ & rowColToOHE(row,column,NUM_COLUMNS)) {
-      flags[column] = true;
-      } else {
-        out << "-";
+      out << "-";
+      if(state_ & rowColToOHE(row,column,NUM_COLUMNS)){
+        flags[column] = true;
       }
-      }
+    }
   }
   out << "\n";
   }
@@ -104,7 +104,7 @@ Color C4Game::currentEnemy() const {
 std::vector<uint8_t> C4Game::getMoves() const {
   std::vector<uint8_t> availableMoves;
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
-    if (!(state_ & ((uint64_t)1 << (0 * NUM_COLUMNS + column)))) {
+    if (!(state_ & rowColToOHE(0,column,NUM_COLUMNS))) {
       availableMoves.push_back(column);
     }
   }
@@ -116,7 +116,7 @@ bool C4Game::checkWin() const {
   auto column = history_.top();
   uint8_t row = 0;
   for (; row < NUM_ROWS; ++row) {
-    if (state_ & ((uint64_t)1 << (row * NUM_COLUMNS + column))) {
+    if (state_ & rowColToOHE(row,column,NUM_COLUMNS)) {
       break;
     }
   }
@@ -149,7 +149,7 @@ bool C4Game::checkWin() const {
 }
 bool C4Game::checkDraw() const {
   for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
-    if (!(state_ & ((uint64_t)1 << (0 * NUM_COLUMNS + column)))) {
+    if (!(state_ & rowColToOHE(0,column,NUM_COLUMNS))) {
       return false;
     }
   }

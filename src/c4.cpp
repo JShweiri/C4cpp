@@ -166,6 +166,27 @@ int main() {
   board.print();
   board.printRaw();
   board.printBinary();
+
+  board.makeMove(3);
+  board.print();
+  board.printRaw();
+  board.printBinary();
+
+  board.makeMove(3);
+  board.print();
+  board.printRaw();
+  board.printBinary();
+
+  board.makeMove(3);
+  board.print();
+  board.printRaw();
+  board.printBinary();
+
+  board.makeMove(3);
+  board.print();
+  board.printRaw();
+  board.printBinary();
+
   board.makeMove(3);
   board.print();
   board.printRaw();
