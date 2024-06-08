@@ -34,8 +34,6 @@ class C4Game {
   const static uint8_t NUM_ROWS;
   const static uint8_t NUM_COLUMNS;
  private:
-  std::optional<uint8_t> getLowestEmptyRow_(uint8_t column) const;
-  std::optional<uint8_t> getHighestOccupiedRow_(uint8_t column) const;
   Board state_;
   std::stack<uint8_t> history_;
 };

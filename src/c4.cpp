@@ -29,10 +29,10 @@ using namespace std;
 // std::unordered_map<uint64_t, Data> myMap;
 // std::mutex mapMutex;
 
-// uint8_t randomPolicy(const C4Game& board) {
-//   auto v = board.getMoves();
-//   return v[rand() % v.size()];
-// }
+uint8_t randomPolicy(const C4Game& board) {
+  auto v = board.getMoves();
+  return v[rand() % v.size()];
+}
 
 
 
@@ -172,7 +172,6 @@ int main() {
 
   while (!board.gameOver()) {
     board.print();
-  board.printBinary();
 
     Color currentPlayer = board.currentPlayer();
     cout << "Player " << +currentPlayer << "'s turn.\n";
@@ -182,6 +181,7 @@ int main() {
       cout << "Enter your move (0-" << C4Game::NUM_COLUMNS - 1 << "): ";
       cin >> move;
     } else {
+      move = randomPolicy(board);
       // // AI makes a move
       // if (currentPlayer == Color::BLACK) {
       //   move = treeSearch(board, UCBPolicy, 50000);
@@ -199,7 +199,6 @@ int main() {
   }
 
   board.print();
-  board.printBinary();
 
   if (board.checkWin()) {
     cout << "Player " << +board.currentEnemy() << " wins!\n";

@@ -85,10 +85,6 @@ void C4Game::printBinary(bool showIndexes, bool showExtra, char lineSep) const {
   std::cout << std::endl;
 }
 
-// void C4Game::printBinaryFormatted() const {
-//   std::cout << state_;
-// }
-
 void C4Game::print(std::ostream& out) const {
   bool flags[NUM_COLUMNS] = {};
   for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
@@ -148,8 +144,6 @@ bool C4Game::checkWin() const {
   constexpr uint8_t maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
   Color lastPiece = currentEnemy();
 
-  cout << "last piece" << +lastPiece << endl;
-
   // go down the column
   for (uint8_t i = 1; i < maxSquareSize; i++){
     uint8_t bottomRow = row + i;
@@ -162,36 +156,29 @@ bool C4Game::checkWin() const {
   // use mod arith somehow?
 
     // check if found a matching piece i below the given piece
-    cout << +bottomRow << " " <<  NUM_ROWS+1  << " " << +(state_ & rowColToOHE(bottomRow,column))  << " " <<  +lastPiece << endl;
     if (bottomRow < NUM_ROWS+1 && (state_ & rowColToOHE(bottomRow,column)) >> rowColToIndex(bottomRow,column) == lastPiece){
-        std::cout << "size found: " << +i;
-
       uint8_t leftColumn = column - i;
       uint8_t rightColumn = column + i;
 
-        uint64_t lvert = 0;
-  for (int i = 0; i < NUM_ROWS; ++i) {
-    lvert |= rowColToOHE(i, leftColumn);
-  }
+      uint64_t lvert = 0;
+      for (int i = 0; i < NUM_ROWS; ++i) {
+        lvert |= rowColToOHE(i, leftColumn);
+      }
 
-    uint64_t rvert = 0;
-  for (int i = 0; i < NUM_ROWS; ++i) {
-    rvert |= rowColToOHE(i, rightColumn);
-  }
+      uint64_t rvert = 0;
+      for (int i = 0; i < NUM_ROWS; ++i) {
+        rvert |= rowColToOHE(i, rightColumn);
+      }
 
       auto pal = (+(lvert & state_) > +rowColToOHE(row,leftColumn));
       auto par = (+(rvert & state_) > +rowColToOHE(row,rightColumn));
-      std::cout << "piece above l: " << pal << std::endl;
-      std::cout << "piece above r: " << par << std::endl;
-      // check left square                                 Need to shift these right to get them in the 1 digits.
+      // check left square
       if (leftColumn >= 0 && pal && rowColEquals(state_, row,leftColumn, lastPiece) && rowColEquals(state_, bottomRow,leftColumn, lastPiece)){
-        std::cout << "left";
         return true;
       }
 
       // check right square
       if (rightColumn < NUM_COLUMNS && par && rowColEquals(state_, row,rightColumn, lastPiece) && rowColEquals(state_, bottomRow,rightColumn, lastPiece)){
-        std::cout << "right";
         return true;
       }
     }
