@@ -3,9 +3,15 @@ const uint8_t C4Game::NUM_ROWS = 6;
 const uint8_t C4Game::NUM_COLUMNS = 7;
 using namespace std;
 
+// pass more by ref / const
+
 // This is the 49 size index. no pieces should be placed on the 0th row, just flags.
 inline uint64_t C4Game::rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns) const {
     return 63 - (row * numColumns + column);
+}
+
+inline bool C4Game::rowColEquals(uint64_t state, uint8_t row, uint8_t column, uint8_t value, uint8_t numColumns) const {
+    return ((state >> rowColToIndex(row, column, numColumns)) & 1) == value;
 }
 
 inline uint64_t C4Game::rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns) const {
@@ -139,7 +145,7 @@ bool C4Game::checkWin() const {
   }
   row+=1;
 
-  uint8_t maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
+  constexpr uint8_t maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
   Color lastPiece = currentEnemy();
 
   cout << "last piece" << +lastPiece << endl;
@@ -156,7 +162,8 @@ bool C4Game::checkWin() const {
   // use mod arith somehow?
 
     // check if found a matching piece i below the given piece
-    if (bottomRow < NUM_ROWS+1 && (state_ & rowColToOHE(bottomRow,column)) == lastPiece){
+    cout << +bottomRow << " " <<  NUM_ROWS+1  << " " << +(state_ & rowColToOHE(bottomRow,column))  << " " <<  +lastPiece << endl;
+    if (bottomRow < NUM_ROWS+1 && (state_ & rowColToOHE(bottomRow,column)) >> rowColToIndex(bottomRow,column) == lastPiece){
         std::cout << "size found: " << +i;
 
       uint8_t leftColumn = column - i;
@@ -176,14 +183,14 @@ bool C4Game::checkWin() const {
       auto par = (+(rvert & state_) > +rowColToOHE(row,rightColumn));
       std::cout << "piece above l: " << pal << std::endl;
       std::cout << "piece above r: " << par << std::endl;
-      // check left square
-      if (leftColumn >= 0 && pal && ((state_ & rowColToOHE(row,leftColumn)) == lastPiece) && ((state_ & rowColToOHE(bottomRow,leftColumn)) == lastPiece)){
+      // check left square                                 Need to shift these right to get them in the 1 digits.
+      if (leftColumn >= 0 && pal && rowColEquals(state_, row,leftColumn, lastPiece) && rowColEquals(state_, bottomRow,leftColumn, lastPiece)){
         std::cout << "left";
         return true;
       }
 
       // check right square
-      if (rightColumn < NUM_COLUMNS && par && ((state_ & rowColToOHE(row,rightColumn)) == lastPiece) && ((state_ & rowColToOHE(bottomRow,rightColumn)) == lastPiece)){
+      if (rightColumn < NUM_COLUMNS && par && rowColEquals(state_, row,rightColumn, lastPiece) && rowColEquals(state_, bottomRow,rightColumn, lastPiece)){
         std::cout << "right";
         return true;
       }
