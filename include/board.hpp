@@ -14,12 +14,15 @@ typedef uint8_t Color; // typedefed in case we want to switch to a class. Also g
 typedef uint64_t Board;// ^
 class C4Game {
  public:
+  C4Game();
+  inline uint64_t rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
+  inline uint64_t rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
   bool makeMove(const uint8_t column);
   bool undoMove();
   void print() const;
   void print(std::ostream& out) const;
   void printRaw() const;
-  void printBinary(bool showExtra = true, char lineSep = '\n') const;
+  void printBinary(bool showIndexes = true, bool showExtra = true, char lineSep = '\n') const;
   Color currentPlayer() const;
   Color currentEnemy() const;
   std::vector<uint8_t> getMoves() const;
@@ -32,7 +35,7 @@ class C4Game {
  private:
   std::optional<uint8_t> getLowestEmptyRow_(uint8_t column) const;
   std::optional<uint8_t> getHighestOccupiedRow_(uint8_t column) const;
-  Board state_ = ((int)pow(2, NUM_COLUMNS) - 1) << (64-(NUM_ROWS+1)*NUM_COLUMNS);
+  Board state_;
   std::stack<uint8_t> history_;
 };
 #endif

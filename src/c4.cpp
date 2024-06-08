@@ -163,75 +163,49 @@ int main() {
   srand(time(0));
 
   C4Game board;
-  board.print();
-  board.printRaw();
+  bool humanX, humanO;
+
+  cout << "Is X a human? (1 = yes, 0 = no): ";
+  cin >> humanX;
+  cout << "Is O a human? (1 = yes, 0 = no): ";
+  cin >> humanO;
+
+  while (!board.gameOver()) {
+    board.print();
   board.printBinary();
 
-  board.makeMove(3);
+    Color currentPlayer = board.currentPlayer();
+    cout << "Player " << +currentPlayer << "'s turn.\n";
+
+    size_t move = 0;
+    if ((currentPlayer == BLACK && humanX) || (currentPlayer == RED && humanO)) {
+      cout << "Enter your move (0-" << C4Game::NUM_COLUMNS - 1 << "): ";
+      cin >> move;
+    } else {
+      // // AI makes a move
+      // if (currentPlayer == Color::BLACK) {
+      //   move = treeSearch(board, UCBPolicy, 50000);
+      // } else {
+      //   move = treeSearch(board, randomPolicy, 50000);
+      // }
+      // cout << "AI chose move: " << move << endl;
+    }
+
+    if (board.makeMove(move)) {
+      // Move successful
+    } else {
+      cout << "Invalid move. Try again.\n";
+    }
+  }
+
   board.print();
-  board.printRaw();
   board.printBinary();
 
-  board.makeMove(3);
-  board.print();
-  board.printRaw();
-  board.printBinary();
-
-  board.makeMove(3);
-  board.print();
-  board.printRaw();
-  board.printBinary();
-
-  board.makeMove(3);
-  board.print();
-  board.printRaw();
-  board.printBinary();
-
-  board.makeMove(3);
-  board.print();
-  board.printRaw();
-  board.printBinary();
-  // bool humanX, humanO;
-
-  // cout << "Is X a human? (1 = yes, 0 = no): ";
-  // cin >> humanX;
-  // cout << "Is O a human? (1 = yes, 0 = no): ";
-  // cin >> humanO;
-
-  // while (!board.gameOver()) {
-  //   board.print();
-
-  //   Color currentPlayer = board.currentPlayer();
-  //   cout << "Player " << currentPlayer << "'s turn.\n";
-
-  //   size_t move;
-  //   if ((currentPlayer == Color::BLACK && humanX) || (currentPlayer == Color::RED && humanO)) {
-  //     cout << "Enter your move (0-" << C4Game::NUM_COLUMNS - 1 << "): ";
-  //     cin >> move;
-  //   } else {
-  //     // AI makes a move
-  //     if (currentPlayer == Color::BLACK) {
-  //       move = treeSearch(board, UCBPolicy, 50000);
-  //     } else {
-  //       move = treeSearch(board, randomPolicy, 50000);
-  //     }
-  //     cout << "AI chose move: " << move << endl;
-  //   }
-
-  //   if (board.makeMove(move)) {
-  //     // Move successful
-  //   } else {
-  //     cout << "Invalid move. Try again.\n";
-  //   }
-  // }
-
-  // board.print();
-
-  // if (board.checkWin()) {
-  //   cout << "Player " << board.currentEnemy() << " wins!\n";
-  // } else {
-  //   cout << "It's a draw!\n";
-  // }
+  if (board.checkWin()) {
+    cout << "Player " << +board.currentEnemy() << " wins!\n";
+  } else {
+    cout << "It's a draw!\n";
+  }
 
   return 0;
 }
