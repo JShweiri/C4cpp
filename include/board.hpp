@@ -30,6 +30,7 @@ class C4Game {
   bool checkWin() const; // Checks if currentEnemy won.
   bool checkDraw() const;
   bool gameOver() const;
+  uint64_t encode() const{return state_;};
 
   const static uint8_t NUM_ROWS;
   const static uint8_t NUM_COLUMNS;
