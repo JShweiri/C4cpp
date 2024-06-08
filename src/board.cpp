@@ -136,10 +136,15 @@ bool C4Game::checkWin() const {
   uint8_t row = 0;
   for (; row < NUM_ROWS; ++row) {
     if (state_ & rowColToOHE(row,column)) {
+      row+=1;
       break;
     }
   }
-  row+=1;
+
+  uint64_t vert = 0;
+  for (int i = 0; i < NUM_ROWS; ++i) {
+    vert |= rowColToOHE(i, 0);
+  }
 
   constexpr uint8_t maxSquareSize = std::min(NUM_ROWS, NUM_COLUMNS);
   Color lastPiece = currentEnemy();
@@ -148,30 +153,13 @@ bool C4Game::checkWin() const {
   for (uint8_t i = 1; i < maxSquareSize; i++){
     uint8_t bottomRow = row + i;
 
-  // need to check above the spot to see if any 1s to know if spot is a piece
-
-  // is storing array of heights better computationally?
-  // 3 bits * 7 cols. can use a 32 bit num.
-
-  // use mod arith somehow?
-
     // check if found a matching piece i below the given piece
     if (bottomRow < NUM_ROWS+1 && (state_ & rowColToOHE(bottomRow,column)) >> rowColToIndex(bottomRow,column) == lastPiece){
       uint8_t leftColumn = column - i;
       uint8_t rightColumn = column + i;
 
-      uint64_t lvert = 0;
-      for (int i = 0; i < NUM_ROWS; ++i) {
-        lvert |= rowColToOHE(i, leftColumn);
-      }
-
-      uint64_t rvert = 0;
-      for (int i = 0; i < NUM_ROWS; ++i) {
-        rvert |= rowColToOHE(i, rightColumn);
-      }
-
-      auto pal = (+(lvert & state_) > +rowColToOHE(row,leftColumn));
-      auto par = (+(rvert & state_) > +rowColToOHE(row,rightColumn));
+      auto pal = (+(vert>>leftColumn & state_) > +rowColToOHE(row,leftColumn));
+      auto par = (+(vert>>rightColumn & state_) > +rowColToOHE(row,rightColumn));
       // check left square
       if (leftColumn >= 0 && pal && rowColEquals(state_, row,leftColumn, lastPiece) && rowColEquals(state_, bottomRow,leftColumn, lastPiece)){
         return true;

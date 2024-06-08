@@ -14,8 +14,6 @@ using namespace std;
 
 // Avoid Recursion
 
-// use bitboard everywhere
-
 // fix MCTS
 
 // Implement NN Heuristic :)
@@ -174,7 +172,7 @@ int main() {
     board.print();
 
     Color currentPlayer = board.currentPlayer();
-    cout << "Player " << +currentPlayer << "'s turn.\n";
+    cout << "Player " << currentPlayer+1 << "'s turn.\n";
 
     size_t move = 0;
     if ((currentPlayer == BLACK && humanX) || (currentPlayer == RED && humanO)) {
