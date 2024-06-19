@@ -5,6 +5,8 @@ using namespace std;
 
 // pass more by ref / const
 
+// double check the inlines will work as expected
+
 // This is the 49 size index. no pieces should be placed on the 0th row, just flags.
 inline uint64_t C4Game::rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns) const {
     return 63 - (row * numColumns + column);
@@ -24,6 +26,32 @@ C4Game::C4Game() {
     for (uint8_t i = 0; i < NUM_COLUMNS; ++i) {
         state_ |= rowColToOHE(NUM_ROWS+1, i, NUM_ROWS);
     }
+}
+
+torch::Tensor C4Game::toTensor() const {
+    // Create a tensor of size (3, NUM_ROWS, NUM_COLUMNS) and initialize to zeros
+    torch::Tensor tensor = torch::zeros({3, NUM_ROWS, NUM_COLUMNS});
+
+    bool flags[NUM_COLUMNS] = {};
+    for (uint8_t row = 0; row < NUM_ROWS+1; ++row) {
+        for (uint8_t column = 0; column < NUM_COLUMNS; ++column) {
+            if (flags[column]) {
+                if (state_ & rowColToOHE(row, column)) {
+                    tensor[0][row-1][column] = 1;
+                } else {
+                    tensor[1][row-1][column] = 1;
+                }
+            } else {
+                if (row > 0) {
+                    tensor[2][row-1][column] = 1;
+                }
+                if (state_ & rowColToOHE(row, column)) {
+                    flags[column] = true;
+                }
+            }
+        }
+    }
+    return tensor;
 }
 
 bool C4Game::makeMove(const uint8_t column) {

@@ -1,208 +1,132 @@
+#include <torch/torch.h>
 #include "board.hpp"
-#include <unordered_map>
-#include <cmath>
-#include <iostream>
-#include <functional>
-#include <thread>
-#include <mutex>
-#include <vector>
-#include <optional>
-#include <cstdlib>
-#include <ctime>
+#include "mcts.hpp"
+#include "sigmazero.hpp"
 
-using namespace std;
+void train(SigmaZeroNet& model, torch::Device device, int numIterations, int numSelfPlayGames) {
+    model.train();
+    torch::optim::Adam optimizer(model.parameters(), torch::optim::AdamOptions(0.001));
+    const int batchSize = 32;
 
-// Avoid Recursion
+    for (int iteration = 0; iteration < numIterations; ++iteration) {
+        std::vector<std::pair<torch::Tensor, torch::Tensor>> trainingData;
 
-// fix MCTS
+        for (int i = 0; i < numSelfPlayGames; ++i) {
+            C4Game game;
+            MCTS mcts(1000, model, device);
+            std::vector<std::pair<torch::Tensor, torch::Tensor>> gameData;
+            while (!game.gameOver()) {
+                torch::Tensor boardTensor = game.toTensor().to(device);
+                auto [policy, value] = model.forward(boardTensor);
+                torch::Tensor actionProbs = torch::softmax(policy, -1);
+                gameData.push_back({boardTensor, actionProbs});
 
-// Implement NN Heuristic :)
+                uint8_t bestMove = mcts.run(game);
+                game.makeMove(bestMove);
+            }
+            if (game.checkWin()) {
+                double result = game.currentEnemy() == BLACK ? 1.0 : -1.0;
+                for (auto& [state, actionProbs] : gameData) {
+                    torch::Tensor valueTensor = torch::full({1}, result, device);
+                    trainingData.push_back({state, valueTensor});
+                    result = -result;  // Alternate between 1.0 and -1.0 for self-play
+                }
+            } else if (game.checkDraw()) {
+                for (auto& [state, actionProbs] : gameData) {
+                    torch::Tensor valueTensor = torch::zeros({1}, device);
+                    trainingData.push_back({state, valueTensor});
+                }
+            }
+        }
 
-struct Data {
-  double visits = 0;
-  double blackWins = 0;
-  double redWins = 0;
-};
+        for (size_t i = 0; i < trainingData.size(); i += batchSize) {
+            auto batchEnd = std::min(i + batchSize, trainingData.size());
+            std::vector<torch::Tensor> states, values;
+            for (size_t j = i; j < batchEnd; ++j) {
+                states.push_back(trainingData[j].first);
+                values.push_back(trainingData[j].second);
+            }
 
-std::unordered_map<uint64_t, Data> myMap;
-std::mutex mapMutex;
+            torch::Tensor statesBatch = torch::stack(states).to(device);
+            torch::Tensor valuesBatch = torch::stack(values).to(device);
 
-uint8_t randomPolicy(const C4Game& board) {
-  auto v = board.getMoves();
-  return v[rand() % v.size()];
-}
+            optimizer.zero_grad();
+            auto [policy, value] = model.forward(statesBatch);
+            torch::Tensor valueLoss = torch::mse_loss(value, valuesBatch);
+            valueLoss.backward();
+            optimizer.step();
+        }
 
-// Is this faster?
-// Random number generator
-// random_device rd;  
-// mt19937 gen(rd()); 
-// uniform_int_distribution<> distrib(0, numeric_limits<int>::max());
-
-// // Function for random move selection
-// uint8_t randomPolicy(const C4Game& board) {
-//     auto moves = board.getMoves();
-//     return moves[distrib(gen) % moves.size()];
-// }
-
-
-uint8_t UCBPolicy(C4Game& board) {
-  const double c = 10000.0; // Ensure `c` is of type double
-  auto v = board.getMoves();
-  auto parentEncoding = board.encode();
-
-  optional<double> maxScore = nullopt; // Use double for maxScore
-  vector<int> bestMoves;
-
-  double parentVisits;
-  {
-    std::lock_guard<std::mutex> lock(mapMutex);
-    parentVisits = myMap[parentEncoding].visits + 2; // Avoid log(0)
-  }
-
-  for (auto move : v) {
-    board.makeMove(move);
-    auto childEncoding = board.encode();
-
-    double childVisits, wins;
-    {
-      std::lock_guard<std::mutex> lock(mapMutex);
-      childVisits = myMap[childEncoding].visits + 2; // Avoid division by zero
-      wins = (board.currentPlayer() == BLACK ? myMap[childEncoding].blackWins : myMap[childEncoding].redWins);
+        std::cout << "Iteration " << iteration + 1 << " complete." << std::endl;
     }
-
-    double score = wins / childVisits + c * sqrt(log(parentVisits) / childVisits);
-
-    if (!maxScore.has_value() || score > *maxScore) {
-      maxScore = score;
-      bestMoves.clear();
-      bestMoves.push_back(move);
-    } else if (score == *maxScore) {
-      bestMoves.push_back(move);
-    }
-
-    board.undoMove();
-  }
-
-  if (!bestMoves.empty()) {
-    return bestMoves[rand() % bestMoves.size()];
-  }
-
-  return bestMoves[0]; // Fallback in case bestMoves is empty
-}
-
-Color playout(C4Game& board, std::function<int(C4Game&)> movePolicy) {
-  if (board.checkWin()) {
-    return board.currentEnemy();
-  }
-  if (board.checkDraw()) {
-    return 0;
-  }
-
-  uint8_t newMove = movePolicy(board);
-  board.makeMove(newMove);
-  Color val = playout(board, movePolicy);
-
-// Find a better way to do below because its slow af
-
-  // auto encoding = board.encode();
-  // {
-  //   std::lock_guard<std::mutex> lock(mapMutex);
-  //   myMap[encoding].visits++;
-  //   if (val == BLACK) {
-  //     myMap[encoding].blackWins += 1;
-  //   } else if (val == RED) {
-  //     myMap[encoding].redWins += 1; // Red wins should be incremented
-  //   }
-  // }
-  board.undoMove();
-
-  return val;
-}
-
-void evaluateMove(C4Game board, uint8_t move, std::function<int(C4Game&)> movePolicy, int numSimulations, uint8_t& bestMove, optional<int>& maxVal, std::mutex& resultMutex) {
-  board.makeMove(move);
-  int total = 0;
-  for (int i = 0; i < numSimulations; i++) {
-    auto outcome = playout(board, movePolicy);
-    if (outcome == board.currentEnemy()) {
-      total += 1;
-    } else if (outcome == board.currentPlayer()) {
-      total -= 1;
-    }
-  }
-  board.undoMove();
-
-  std::lock_guard<std::mutex> lock(resultMutex);
-  if (!maxVal.has_value() || total > *maxVal) {
-    maxVal = total;
-    bestMove = move;
-  }
-  cout << +move << ": " << (float)total/numSimulations << endl;
-}
-
-uint8_t treeSearch(C4Game& board, std::function<int(C4Game&)> movePolicy, int numSimulations = 10000) {
-  auto moveList = board.getMoves();
-  optional<int> maxVal = nullopt;
-  uint8_t bestMove = 0;
-  std::mutex resultMutex;
-
-  std::vector<std::thread> threads;
-  for (auto move : moveList) {
-    threads.emplace_back(evaluateMove, board, move, movePolicy, numSimulations, std::ref(bestMove), std::ref(maxVal), std::ref(resultMutex));
-  }
-
-  for (auto& thread : threads) {
-    thread.join();
-  }
-
-  return bestMove;
 }
 
 int main() {
-  srand(time(0));
-
-  C4Game board;
-  bool humanX = true, humanO = false;
-
-  // cout << "Is X a human? (1 = yes, 0 = no): ";
-  // cin >> humanX;
-  // cout << "Is O a human? (1 = yes, 0 = no): ";
-  // cin >> humanO;
-
-  while (!board.gameOver()) {
-    board.print();
-
-    Color currentPlayer = board.currentPlayer();
-    cout << "Player " << +currentPlayer << "'s turn.\n";
-
-    size_t move = 0;
-    if ((currentPlayer == BLACK && humanX) || (currentPlayer == RED && humanO)) {
-      cout << "Enter your move (0-" << C4Game::NUM_COLUMNS - 1 << "): ";
-      cin >> move;
-    } else {
-      // AI makes a move
-      if (currentPlayer == BLACK) {
-        move = treeSearch(board, UCBPolicy, 50000);
-      } else {
-        move = treeSearch(board, randomPolicy, 50'000);
-      }
-      cout << "AI chose move: " << move << endl;
+    torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available()) {
+        device = torch::Device(torch::kCUDA);
     }
 
-    if (board.makeMove(move)) {
-      // Move successful
+    SigmaZeroNet model;
+    model.to(device);
+
+    std::string input;
+    std::cout << "Do you want to train the model? (yes/no): ";
+    std::cin >> input;
+
+    if (input == "yes") {
+        int numIterations, numSelfPlayGames;
+        std::cout << "Enter number of training iterations: ";
+        std::cin >> numIterations;
+        std::cout << "Enter number of self-play games per iteration: ";
+        std::cin >> numSelfPlayGames;
+        
+        std::string checkpointPath;
+        std::cout << "Enter model checkpoint file path to save: ";
+        std::cin >> checkpointPath;
+
+        train(model, device, numIterations, numSelfPlayGames);
+        model.save_weights(checkpointPath);
     } else {
-      cout << "Invalid move. Try again.\n";
+        std::string checkpointPath;
+        std::cout << "Enter model checkpoint file path to load: ";
+        std::cin >> checkpointPath;
+
+        model.load_weights(checkpointPath);
     }
-  }
 
-  board.print();
+    C4Game game;
+    MCTS mcts(1000, model, device);  // Set the number of iterations for MCTS
 
-  if (board.checkWin()) {
-    cout << "Player " << +board.currentEnemy() << " wins!\n";
-  } else {
-    cout << "It's a draw!\n";
-  }
+    game.print();
 
-  return 0;
+    while (!game.gameOver()) {
+        if (game.currentPlayer() == BLACK) {
+            std::cout << "Player 1's turn. Enter column (0-" << static_cast<int>(C4Game::NUM_COLUMNS - 1) << "): ";
+            int column;
+            std::cin >> column;
+            if (!game.makeMove(column)) {
+                std::cout << "Invalid move. Try again." << std::endl;
+                continue;
+            }
+        } else {
+            std::cout << "AI's turn." << std::endl;
+            uint8_t bestMove = mcts.run(game);
+            game.makeMove(bestMove);
+            std::cout << "AI played column " << static_cast<int>(bestMove) << std::endl;
+        }
+        game.print();
+    }
+
+    if (game.checkWin()) {
+        if (game.currentPlayer() == BLACK) {
+            std::cout << "Player 2 (AI) wins!" << std::endl;
+        } else {
+            std::cout << "Player 1 wins!" << std::endl;
+        }
+    } else if (game.checkDraw()) {
+        std::cout << "The game is a draw!" << std::endl;
+    }
+
+    return 0;
 }

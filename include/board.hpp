@@ -7,6 +7,7 @@
 #include <stack>
 #include <cmath>
 #include <algorithm>
+#include <torch/torch.h>
 
 #define BLACK 1
 #define RED 0
@@ -15,9 +16,6 @@ typedef uint64_t Board;// ^
 class C4Game {
  public:
   C4Game();
-  inline bool rowColEquals(uint64_t state, uint8_t row, uint8_t column, uint8_t value, uint8_t numColumns = NUM_COLUMNS) const;
-  inline uint64_t rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
-  inline uint64_t rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
   bool makeMove(const uint8_t column);
   bool undoMove();
   void print() const;
@@ -30,11 +28,17 @@ class C4Game {
   bool checkWin() const; // Checks if currentEnemy won.
   bool checkDraw() const;
   bool gameOver() const;
+  torch::Tensor toTensor() const;
+
   uint64_t encode() const{return state_;};
 
   const static uint8_t NUM_ROWS;
   const static uint8_t NUM_COLUMNS;
  private:
+  inline bool rowColEquals(uint64_t state, uint8_t row, uint8_t column, uint8_t value, uint8_t numColumns = NUM_COLUMNS) const;
+  inline uint64_t rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
+  inline uint64_t rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
+
   Board state_;
   std::stack<uint8_t> history_;
 };
