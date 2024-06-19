@@ -15,9 +15,6 @@ typedef uint64_t Board;// ^
 class C4Game {
  public:
   C4Game();
-  inline bool rowColEquals(uint64_t state, uint8_t row, uint8_t column, uint8_t value, uint8_t numColumns = NUM_COLUMNS) const;
-  inline uint64_t rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
-  inline uint64_t rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
   bool makeMove(const uint8_t column);
   bool undoMove();
   void print() const;
@@ -35,6 +32,10 @@ class C4Game {
   const static uint8_t NUM_ROWS;
   const static uint8_t NUM_COLUMNS;
  private:
+  inline bool rowColEquals(uint64_t state, uint8_t row, uint8_t column, uint8_t value, uint8_t numColumns = NUM_COLUMNS) const;
+  inline uint64_t rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
+  inline uint64_t rowColToOHE(uint8_t row, uint8_t column, uint8_t numColumns = NUM_COLUMNS) const;
+
   Board state_;
   std::stack<uint8_t> history_;
 };

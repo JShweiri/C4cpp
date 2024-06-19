@@ -5,6 +5,8 @@ using namespace std;
 
 // pass more by ref / const
 
+// double check the inlines will work as expected
+
 // This is the 49 size index. no pieces should be placed on the 0th row, just flags.
 inline uint64_t C4Game::rowColToIndex(uint8_t row, uint8_t column, uint8_t numColumns) const {
     return 63 - (row * numColumns + column);
